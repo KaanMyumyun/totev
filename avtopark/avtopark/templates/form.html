@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field with context %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-9">
+    <h1 class="h3 mb-1">{{ title }}</h1>
+    {% if intro %}<p class="text-body-secondary">{{ intro }}</p>{% endif %}
+    <p class="small text-body-secondary">Полетата, отбелязани с <span class="text-danger">*</span>, са задължителни.</p>
+    <form method="post" class="card shadow-sm" {% if form.live_total %}data-live-total="{{ form.live_total[0] }},{{ form.live_total[1] }}"{% endif %}>
+      <div class="card-body">
+        {{ form.hidden_tag() }}
+        {% if form.errors %}
+        <div class="alert alert-danger py-2"><i class="bi bi-exclamation-triangle"></i> Моля, коригирайте отбелязаните полета.</div>
+        {% endif %}
+        {% for section_title, fields in form.layout %}
+          {% if section_title %}<h2 class="h6 text-uppercase text-body-secondary border-bottom pb-1 mt-2 mb-3">{{ section_title }}</h2>{% endif %}
+          <div class="row g-3 mb-3">
+            {% for name, col in fields %}{{ render_field(form[name], col) }}{% endfor %}
+          </div>
+        {% endfor %}
+        {% if form.live_total %}
+        <div class="alert alert-info py-2 d-none" id="live-total" aria-live="polite"></div>
+        {% endif %}
+      </div>
+      <div class="card-footer d-flex gap-2 justify-content-end">
+        <a class="btn btn-outline-secondary" href="{{ cancel_url }}">Отказ</a>
+        <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg"></i> {{ submit_label or "Запази" }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

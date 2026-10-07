@@ -1,0 +1,173 @@
+@startuml class
+!include _style.iuml
+title Клас диаграма – модел на домейна и бизнес логика
+skinparam classAttributeIconSize 0
+
+package "models (ORM)" {
+  class Vehicle {
+    reg_number : str
+    make, model : str
+    year : int
+    vehicle_type, fuel_type : str
+    vin : str
+    initial_mileage : int
+    current_mileage : int
+    status : str
+    --
+    display_name() : str
+    fuel_unit() : str
+    open_trip() : Trip
+    has_history() : bool
+  }
+  class Driver {
+    first_name, last_name : str
+    license_number : str
+    license_categories : str
+    license_expiry : date
+    active : bool
+    --
+    full_name() : str
+    has_history() : bool
+  }
+  class MaintenanceType {
+    name : str
+    default_interval_km : int
+    default_interval_days : int
+    auto_assign : bool
+    --
+    is_periodic() : bool
+    is_used() : bool
+  }
+  class MaintenancePlan {
+    interval_km : int
+    interval_days : int
+    baseline_date : date
+    baseline_mileage : int
+    active : bool
+  }
+  class MaintenanceRecord {
+    performed_on : date
+    mileage : int
+    description : str
+    cost : Decimal
+    service_provider : str
+  }
+  class FuelRecord {
+    filled_on : date
+    mileage : int
+    quantity : Decimal
+    price_per_unit : Decimal
+    total_cost : Decimal
+    full_tank : bool
+  }
+  class Trip {
+    started_at, ended_at : datetime
+    start_mileage, end_mileage : int
+    purpose : str
+    --
+    is_open() : bool
+    distance() : int
+  }
+  class InsurancePolicy {
+    policy_type : str
+    insurer : str
+    policy_number : str
+    start_date, end_date : date
+    premium : Decimal
+    --
+    days_left(today) : int
+  }
+  class OdometerReading {
+    read_on : date
+    mileage : int
+  }
+  class User {
+    username : str
+    role : str
+    active : bool
+    failed_logins : int
+    --
+    set_password(p)
+    check_password(p) : bool
+    can(permission) : bool
+  }
+  class FixedDecimal <<TypeDecorator>> {
+    scale : int
+    --
+    process_bind_param()
+    process_result_value()
+  }
+}
+
+package "services (бизнес логика)" {
+  class reminders <<module>> {
+    evaluate_due(...) : DueStatus
+    evaluate_expiry(...) : DueStatus
+    collect_reminders(...) : list[Reminder]
+    count_by_level(...) : dict
+  }
+  class Reminder {
+    kind : str
+    title : str
+    status : DueStatus
+    estimated_date : date
+    --
+    level() : str
+    deadline() : date
+  }
+  class DueStatus <<dataclass>> {
+    level : str
+    due_date : date
+    due_km : int
+    days_left : int
+    km_left : int
+  }
+  class odometer <<module>> {
+    vehicle_readings(v) : list[Reading]
+    validate_reading(v, on, km)
+    refresh_vehicle_mileage(v)
+    average_daily_km(v) : float
+  }
+  class trips <<module>> {
+    start_trip(...) : Trip
+    finish_trip(...) : Trip
+  }
+  class costs <<module>> {
+    costs_by_vehicle(...) : list[VehicleCosts]
+    monthly_costs(...) : list[MonthCosts]
+  }
+  class fuel <<module>> {
+    compute_total(q, p) : Decimal
+    average_consumption(r) : Decimal
+  }
+  class BusinessRuleError <<exception>> {
+    message : str
+    field : str
+  }
+}
+
+Vehicle "1" *-- "0..*" MaintenancePlan
+MaintenancePlan "0..*" --> "1" MaintenanceType
+Vehicle "1" o-- "0..*" MaintenanceRecord
+MaintenanceRecord "0..*" --> "1" MaintenanceType
+Vehicle "1" o-- "0..*" FuelRecord
+Vehicle "1" o-- "0..*" Trip
+Driver "1" o-- "0..*" Trip
+FuelRecord "0..*" --> "0..1" Driver
+Vehicle "1" o-- "0..*" InsurancePolicy
+Vehicle "1" *-- "0..*" OdometerReading
+Vehicle "0..*" --> "0..1" Driver : отговорен
+MaintenanceRecord ..> FixedDecimal : cost
+
+reminders ..> MaintenancePlan
+reminders ..> InsurancePolicy
+reminders ..> Driver
+reminders --> Reminder : създава
+Reminder *-- DueStatus
+reminders ..> odometer : прогноза
+trips ..> odometer : валидира
+trips ..> fuel
+odometer ..> BusinessRuleError : хвърля
+trips ..> BusinessRuleError : хвърля
+costs ..> odometer
+@enduml

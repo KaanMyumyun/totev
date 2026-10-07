@@ -1,0 +1,9 @@
+.venv
+instance
+backups
+tests
+docs
+.pytest_cache
+.coverage
+**/__pycache__
+.env

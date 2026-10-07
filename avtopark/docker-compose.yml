@@ -1,0 +1,32 @@
+# docker compose up -d   ->  http://localhost:8000
+services:
+  web:
+    build: .
+    image: avtopark:1.0
+    restart: unless-stopped            # restarted automatically after a crash or reboot
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      BACKUP_DIR: /app/backups
+    volumes:
+      - avtopark-data:/app/instance    # the database survives container updates
+      - ./backups:/app/backups
+
+  backup:                              # daily backup, the newest BACKUP_KEEP copies are kept
+    image: avtopark:1.0
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      BACKUP_DIR: /app/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["while true; do flask --app avtopark backup; sleep 86400; done"]
+    volumes:
+      - avtopark-data:/app/instance
+      - ./backups:/app/backups
+
+volumes:
+  avtopark-data:

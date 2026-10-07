@@ -1,0 +1,36 @@
+@startuml sequence_return
+!include _style.iuml
+title Диаграма на последователността – «Връщане от курс»
+autonumber
+
+actor "Логистик" as L
+participant "Браузър" as B
+participant "views.trips\nreturn_vehicle()" as V
+participant "TripReturnForm" as F
+participant "services.trips\nfinish_trip()" as T
+participant "services.odometer" as O
+participant "services.records\nsave_fuel_record()" as R
+database "SQLite" as DB
+
+L -> B : попълва краен км,\nгориво и проблем
+B -> V : POST /trips/{id}/return (+ CSRF токен)
+V -> V : проверка на роля «trips.manage»
+V -> F : validate_on_submit()
+F --> V : валидни данни
+V -> T : finish_trip(trip, ended_at, end_mileage, ...)
+T -> O : validate_reading(МПС, дата, км)
+O -> DB : всички отчети на километража
+DB --> O
+alt пробегът не е последователен
+  O --> T : BusinessRuleError
+  T --> V : грешка
+  V --> B : формуляр с грешка до полето
+else валидни данни
+  T -> R : save_fuel_record(...) (ако има зареждане)
+  R -> R : сума = количество × цена
+  T -> T : статус «В ремонт» (ако има сигнал за проблем)
+  T -> O : refresh_vehicle_mileage(МПС)
+  V -> DB : журнал + COMMIT (една транзакция)
+  V --> B : пренасочване + съобщение\n«Изминати: 312 км»
+end
+@enduml

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pagination, vehicle_select, period_inputs, filter_buttons with context %}
+{% block title %}История на обслужванията{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">История на обслужванията и ремонтите</h1>
+    <div class="text-body-secondary">Сума за избраните записи: <strong>{{ total|money if total else 0|money }}</strong></div>
+  </div>
+  {% if can('maintenance.manage') %}
+  <a class="btn btn-primary" href="{{ url_for('maintenance.create_record') }}"><i class="bi bi-plus-lg"></i> Нов запис</a>
+  {% endif %}
+</div>
+
+<form class="card card-body shadow-sm mb-3 py-2 d-print-none" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3">{{ vehicle_select(vehicles, filters.vehicle_id) }}</div>
+    <div class="col-md-3">
+      <label class="form-label small" for="type_id">Вид дейност</label>
+      <select class="form-select form-select-sm" id="type_id" name="type_id">
+        <option value="">Всички</option>
+        {% for t in types %}<option value="{{ t.id }}" {{ 'selected' if filters.type_id == t.id }}>{{ t.name }}</option>{% endfor %}
+      </select>
+    </div>
+    {{ period_inputs(filters) }}
+    {{ filter_buttons(url_for('maintenance.records')) }}
+  </div>
+</form>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>Дата</th><th>МПС</th><th>Дейност</th><th class="text-end">Километраж</th><th>Описание</th><th>Сервиз</th><th class="text-end">Цена</th><th class="d-print-none"></th></tr></thead>
+      <tbody>
+      {% for rec in page.items %}
+        <tr>
+          <td class="text-nowrap">{{ rec.performed_on|date_bg }}</td>
+          <td><a class="plate-link" href="{{ url_for('vehicles.detail', vehicle_id=rec.vehicle_id) }}">{{ rec.vehicle.reg_number }}</a></td>
+          <td>{{ rec.maintenance_type.name }}</td>
+          <td class="text-end text-nowrap">{{ rec.mileage|km }}</td>
+          <td class="small">{{ rec.description }}</td>
+          <td class="small">{{ rec.service_provider or "—" }}</td>
+          <td class="text-end text-nowrap">{{ rec.cost|money }}</td>
+          <td class="text-end text-nowrap d-print-none">
+            {% if can('maintenance.manage') %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('maintenance.edit_record', record_id=rec.id) }}" title="Редактирай"><i class="bi bi-pencil"></i></a>{% endif %}
+            {% if can('records.delete') %}<a class="btn btn-sm btn-outline-danger" href="{{ url_for('maintenance.delete_record', record_id=rec.id) }}" title="Изтрий"><i class="bi bi-trash"></i></a>{% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="text-center text-body-secondary py-4">Няма записи.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{ pagination(page, 'maintenance.records') }}
+{% endblock %}

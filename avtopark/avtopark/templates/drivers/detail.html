@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% from "_macros.html" import expiry_badge with context %}
+{% block title %}{{ driver.full_name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb" class="d-print-none">
+  <ol class="breadcrumb small mb-2">
+    <li class="breadcrumb-item"><a href="{{ url_for('drivers.index') }}">Шофьори</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ driver.full_name }}</li>
+  </ol>
+</nav>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div>
+    <h1 class="h3 mb-1">{{ driver.full_name }}</h1>
+    {% if driver.active %}<span class="badge text-bg-success">активен</span>{% else %}<span class="badge text-bg-secondary">неактивен</span>{% endif %}
+    <span class="text-body-secondary ms-1">Категории {{ driver.license_categories }}</span>
+  </div>
+  <div class="d-flex gap-2 d-print-none">
+    {% if can('drivers.manage') %}<a class="btn btn-outline-secondary" href="{{ url_for('drivers.edit', driver_id=driver.id) }}"><i class="bi bi-pencil"></i> Редактирай</a>{% endif %}
+    {% if can('records.delete') %}<a class="btn btn-outline-danger" href="{{ url_for('drivers.delete', driver_id=driver.id) }}" title="Изтрий"><i class="bi bi-trash"></i></a>{% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4 d-flex flex-column gap-4">
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold"><i class="bi bi-person-vcard"></i> Данни</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5">Телефон</dt><dd class="col-7">{{ driver.phone or "—" }}</dd>
+          <dt class="col-5">Имейл</dt><dd class="col-7 text-break">{{ driver.email or "—" }}</dd>
+          <dt class="col-5">№ на книжка</dt><dd class="col-7 font-monospace">{{ driver.license_number }}</dd>
+          <dt class="col-5">Валидна до</dt><dd class="col-7">{{ driver.license_expiry|date_bg }} {{ expiry_badge((driver.license_expiry - today).days) }}</dd>
+          <dt class="col-5">Курсове</dt><dd class="col-7">{{ driver.trips|length }} · {{ total_km|km }}</dd>
+          {% if driver.notes %}<dt class="col-5">Бележки</dt><dd class="col-7">{{ driver.notes }}</dd>{% endif %}
+        </dl>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold"><i class="bi bi-key"></i> Поверени МПС</div>
+      <ul class="list-group list-group-flush">
+        {% for v in vehicles %}
+        <li class="list-group-item"><a class="plate-link" href="{{ url_for('vehicles.detail', vehicle_id=v.id) }}">{{ v.reg_number }}</a> {{ v.make }} {{ v.model }}</li>
+        {% else %}
+        <li class="list-group-item text-body-secondary small">Няма постоянно поверени МПС.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="col-lg-8 d-flex flex-column gap-4">
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold"><i class="bi bi-clock-history"></i> История на ползване (последни 30 курса)</div>
+      <div class="table-responsive history-table">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light"><tr><th>МПС</th><th>Начало</th><th>Край</th><th class="text-end">Км</th><th>Цел</th></tr></thead>
+          <tbody>
+          {% for trip in driver.trips[:30] %}
+            <tr>
+              <td><a class="plate-link" href="{{ url_for('vehicles.detail', vehicle_id=trip.vehicle_id) }}">{{ trip.vehicle.reg_number }}</a></td>
+              <td class="small text-nowrap">{{ trip.started_at|datetime_bg }}</td>
+              <td class="small text-nowrap">{% if trip.is_open %}<span class="badge text-bg-info">в курс</span>{% else %}{{ trip.ended_at|datetime_bg }}{% endif %}</td>
+              <td class="text-end">{{ trip.distance|number if trip.distance is not none else "—" }}</td>
+              <td class="small">{{ trip.purpose }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="text-body-secondary">Няма курсове.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-body py-2 small"><a href="{{ url_for('reports.usage', driver_id=driver.id) }}">Справка за ползването ›</a></div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold"><i class="bi bi-fuel-pump"></i> Последни зареждания</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light"><tr><th>Дата</th><th>МПС</th><th class="text-end">Количество</th><th class="text-end">Сума</th><th>Станция</th></tr></thead>
+          <tbody>
+          {% for rec in fuel_records %}
+            <tr>
+              <td>{{ rec.filled_on|date_bg }}</td>
+              <td>{{ rec.vehicle.reg_number }}</td>
+              <td class="text-end">{{ rec.quantity|number(2) }} {{ rec.vehicle.fuel_unit }}</td>
+              <td class="text-end">{{ rec.total_cost|money }}</td>
+              <td class="small">{{ rec.station or "—" }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="text-body-secondary">Няма зареждания.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

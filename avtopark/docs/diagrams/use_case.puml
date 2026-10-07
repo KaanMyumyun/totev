@@ -1,0 +1,64 @@
+@startuml use_case
+!include _style.iuml
+left to right direction
+title Use Case диаграма – Система за управление на автопарк
+
+actor "Потребител" as User
+actor "Механик" as Mechanic
+actor "Логистик" as Logistician
+actor "Мениджър" as Manager
+actor "Администратор" as Admin
+User <|-- Mechanic
+User <|-- Logistician
+User <|-- Manager
+Manager <|-- Admin
+
+rectangle "Система за управление на автопарк" {
+  usecase "Вход в системата" as UC_Login
+  usecase "Преглед на табло,\nМПС и история" as UC_View
+  usecase "Проверка на обслужването\n(«Провери обслужване»)" as UC_Check
+  usecase "Изчисляване на сроковете\nпо дата и пробег" as UC_Calc
+  usecase "Смяна на статус на МПС" as UC_Status
+  usecase "Въвеждане на ремонт /\nобслужване" as UC_Repair
+  usecase "Връщане на МПС\nв статус «Активно»" as UC_Reactivate
+  usecase "Управление на плана\nза поддръжка" as UC_Plan
+  usecase "Отпускане на МПС\nна шофьор" as UC_Start
+  usecase "Връщане от курс" as UC_Return
+  usecase "Отчитане на километраж" as UC_Odometer
+  usecase "Въвеждане на зареждане" as UC_Fuel
+  usecase "Сигнал за проблем" as UC_Problem
+  usecase "Управление на шофьори" as UC_Drivers
+  usecase "Управление на регистъра\nна МПС" as UC_Vehicles
+  usecase "Управление на застраховки" as UC_Insurance
+  usecase "Справки и отчет\nна разходите" as UC_Reports
+  usecase "Експорт в CSV /\nкалендар (.ics)" as UC_Export
+  usecase "Управление на потребители\nи роли" as UC_Users
+  usecase "Преглед на журнала\nна действията" as UC_Audit
+}
+
+User --> UC_Login
+User --> UC_View
+User --> UC_Check
+UC_Check ..> UC_Calc : <<include>>
+
+Mechanic --> UC_Status
+Mechanic --> UC_Repair
+Mechanic --> UC_Plan
+UC_Reactivate .> UC_Repair : <<extend>>
+
+Logistician --> UC_Start
+Logistician --> UC_Return
+Logistician --> UC_Fuel
+Logistician --> UC_Drivers
+UC_Return ..> UC_Odometer : <<include>>
+UC_Fuel .> UC_Return : <<extend>>
+UC_Problem .> UC_Return : <<extend>>
+
+Manager --> UC_Vehicles
+Manager --> UC_Insurance
+Manager --> UC_Reports
+UC_Export .> UC_Reports : <<extend>>
+
+Admin --> UC_Users
+Admin --> UC_Audit
+@enduml

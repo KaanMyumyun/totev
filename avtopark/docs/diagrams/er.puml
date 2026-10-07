@@ -1,0 +1,168 @@
+@startuml er
+!include _style.iuml
+hide circle
+skinparam linetype ortho
+title ER диаграма на базата данни (SQLite)
+
+entity "vehicles\n(МПС)" as vehicles {
+  * id : INTEGER <<PK>>
+  --
+  * reg_number : VARCHAR(16) <<UNIQUE>>
+  * make : VARCHAR(50)
+  * model : VARCHAR(50)
+  * year : INTEGER [CHECK 1950–2100]
+  * vehicle_type : VARCHAR(20) <<CHECK>>
+  * fuel_type : VARCHAR(20) <<CHECK>>
+  vin : VARCHAR(17) <<UNIQUE>>
+  * in_service_since : DATE
+  * initial_mileage : INTEGER [CHECK >= 0]
+  * current_mileage : INTEGER
+  * mileage_updated_on : DATE
+  * status : VARCHAR(20) <<CHECK>>
+  * status_changed_at : DATETIME
+  status_note : VARCHAR(255)
+  responsible_driver_id : INTEGER <<FK>>
+  notes : TEXT
+}
+
+entity "drivers\n(шофьори)" as drivers {
+  * id : INTEGER <<PK>>
+  --
+  * first_name, last_name : VARCHAR(50)
+  phone : VARCHAR(30)
+  email : VARCHAR(120)
+  * license_number : VARCHAR(20) <<UNIQUE>>
+  * license_categories : VARCHAR(40)
+  * license_expiry : DATE
+  * active : BOOLEAN
+}
+
+entity "maintenance_types\n(видове дейности)" as types {
+  * id : INTEGER <<PK>>
+  --
+  * name : VARCHAR(80) <<UNIQUE>>
+  description : VARCHAR(255)
+  default_interval_km : INTEGER [CHECK > 0]
+  default_interval_days : INTEGER [CHECK > 0]
+  * auto_assign : BOOLEAN
+  * active : BOOLEAN
+}
+
+entity "maintenance_plans\n(план за поддръжка)" as plans {
+  * id : INTEGER <<PK>>
+  --
+  * vehicle_id : INTEGER <<FK>>
+  * maintenance_type_id : INTEGER <<FK>>
+  interval_km : INTEGER
+  interval_days : INTEGER
+  * baseline_date : DATE
+  * baseline_mileage : INTEGER
+  * active : BOOLEAN
+  ..
+  UNIQUE(vehicle_id, maintenance_type_id)
+  CHECK(interval_km или interval_days)
+}
+
+entity "maintenance_records\n(ремонти и обслужвания)" as records {
+  * id : INTEGER <<PK>>
+  --
+  * vehicle_id : INTEGER <<FK>>
+  * maintenance_type_id : INTEGER <<FK>>
+  * performed_on : DATE
+  * mileage : INTEGER [CHECK >= 0]
+  * description : VARCHAR(500)
+  * cost : INTEGER (центове) [CHECK >= 0]
+  service_provider : VARCHAR(120)
+  created_by_id : INTEGER <<FK>>
+}
+
+entity "fuel_records\n(зареждания)" as fuel {
+  * id : INTEGER <<PK>>
+  --
+  * vehicle_id : INTEGER <<FK>>
+  driver_id : INTEGER <<FK>>
+  * filled_on : DATE
+  * mileage : INTEGER
+  * quantity : INTEGER (0,01 л) [CHECK > 0]
+  * price_per_unit : INTEGER (0,001 €) [CHECK > 0]
+  * total_cost : INTEGER (центове)
+  * full_tank : BOOLEAN
+  station : VARCHAR(120)
+}
+
+entity "trips\n(курсове / ползване)" as trips {
+  * id : INTEGER <<PK>>
+  --
+  * vehicle_id : INTEGER <<FK>>
+  * driver_id : INTEGER <<FK>>
+  * started_at : DATETIME
+  ended_at : DATETIME
+  * start_mileage : INTEGER
+  end_mileage : INTEGER
+  * purpose : VARCHAR(200)
+  ..
+  CHECK(end_mileage >= start_mileage)
+  UNIQUE(vehicle_id) WHERE ended_at IS NULL
+  UNIQUE(driver_id) WHERE ended_at IS NULL
+}
+
+entity "insurance_policies\n(застраховки)" as policies {
+  * id : INTEGER <<PK>>
+  --
+  * vehicle_id : INTEGER <<FK>>
+  * policy_type : VARCHAR(20) <<CHECK>>
+  * insurer : VARCHAR(120)
+  * policy_number : VARCHAR(50)
+  * start_date, end_date : DATE
+  * premium : INTEGER (центове)
+  ..
+  UNIQUE(insurer, policy_number)
+  CHECK(end_date > start_date)
+}
+
+entity "odometer_readings\n(отчети на километраж)" as readings {
+  * id : INTEGER <<PK>>
+  --
+  * vehicle_id : INTEGER <<FK>>
+  * read_on : DATE
+  * mileage : INTEGER
+  note : VARCHAR(200)
+}
+
+entity "users\n(потребители)" as users {
+  * id : INTEGER <<PK>>
+  --
+  * username : VARCHAR(50) <<UNIQUE>>
+  * full_name : VARCHAR(120)
+  * password_hash : VARCHAR(255)
+  * role : VARCHAR(20) <<CHECK>>
+  * active : BOOLEAN
+  * failed_logins : INTEGER
+  locked_until : DATETIME
+}
+
+entity "audit_log\n(журнал)" as audit {
+  * id : INTEGER <<PK>>
+  --
+  * created_at : DATETIME
+  user_id : INTEGER <<FK>>
+  username : VARCHAR(50)
+  * action, entity : VARCHAR
+  entity_id : INTEGER
+  details : VARCHAR(500)
+}
+
+vehicles ||--o{ plans : "ON DELETE CASCADE"
+types ||--o{ plans
+vehicles ||--o{ records : "RESTRICT"
+types ||--o{ records
+vehicles ||--o{ fuel : "RESTRICT"
+drivers |o--o{ fuel
+vehicles ||--o{ trips : "RESTRICT"
+drivers ||--o{ trips : "RESTRICT"
+vehicles ||--o{ policies : "RESTRICT"
+vehicles ||--o{ readings : "CASCADE"
+drivers |o--o{ vehicles : "отговорен шофьор"
+users |o--o{ records : "въведен от"
+users |o--o{ audit
+@enduml

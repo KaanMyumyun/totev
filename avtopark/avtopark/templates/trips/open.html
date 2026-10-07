@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Връщане от курс{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">Връщане от курс</h1>
+    <div class="text-body-secondary">Изберете МПС, за да отчетете новия пробег, зареденото гориво и евентуален проблем.</div>
+  </div>
+  {% if can('trips.manage') %}
+  <a class="btn btn-outline-primary" href="{{ url_for('trips.start') }}"><i class="bi bi-box-arrow-right"></i> Отпускане на МПС</a>
+  {% endif %}
+</div>
+<div class="row g-3">
+  {% for trip in trips %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <a class="plate-link fs-5" href="{{ url_for('vehicles.detail', vehicle_id=trip.vehicle_id) }}">{{ trip.vehicle.reg_number }}</a>
+          <span class="badge text-bg-info align-self-start">в курс</span>
+        </div>
+        <div class="text-body-secondary small mb-2">{{ trip.vehicle.make }} {{ trip.vehicle.model }}</div>
+        <div><i class="bi bi-person"></i> {{ trip.driver.full_name }}</div>
+        <div><i class="bi bi-clock"></i> от {{ trip.started_at|datetime_bg }}</div>
+        <div><i class="bi bi-speedometer2"></i> начален пробег {{ trip.start_mileage|km }}</div>
+        <div class="small mt-1"><i class="bi bi-geo-alt"></i> {{ trip.purpose }}</div>
+      </div>
+      {% if can('trips.manage') %}
+      <div class="card-footer">
+        <a class="btn btn-primary w-100" href="{{ url_for('trips.return_vehicle', trip_id=trip.id) }}"><i class="bi bi-box-arrow-in-left"></i> Отчети връщане</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12"><div class="alert alert-info">В момента няма МПС в курс.</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

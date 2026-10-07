@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import reminders_table with context %}
+{% block title %}Проверка на обслужването{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0"><i class="bi bi-clipboard-check"></i> Проверка на обслужването</h1>
+    <div class="text-body-secondary">Текущият пробег и днешната дата ({{ today|date_bg }}) са сравнени с интервалите от плана на всяко МПС, със застраховките и с шофьорските книжки.</div>
+  </div>
+  <div class="d-flex gap-2 d-print-none">
+    {% if show_all %}
+    <a class="btn btn-outline-secondary" href="{{ url_for('main.check') }}">Само изискващите внимание</a>
+    {% else %}
+    <a class="btn btn-outline-secondary" href="{{ url_for('main.check', all=1) }}">Покажи всички</a>
+    {% endif %}
+    <a class="btn btn-outline-primary" href="{{ url_for('reports.upcoming', export='ics') }}"><i class="bi bi-calendar-plus"></i> Добави в календар (.ics)</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="alert alert-danger mb-0 d-flex justify-content-between"><span><i class="bi bi-exclamation-octagon"></i> Просрочени</span><strong>{{ counts.overdue }}</strong></div></div>
+  <div class="col-md-4"><div class="alert alert-warning mb-0 d-flex justify-content-between"><span><i class="bi bi-clock-history"></i> Предстоят до 30 дни / 1000 км</span><strong>{{ counts.due_soon }}</strong></div></div>
+  {% if show_all %}
+  <div class="col-md-4"><div class="alert alert-success mb-0 d-flex justify-content-between"><span><i class="bi bi-check-circle"></i> Наред</span><strong>{{ counts.ok }}</strong></div></div>
+  {% endif %}
+</div>
+
+<div class="card shadow-sm">
+  {% if reminders %}
+    {{ reminders_table(reminders) }}
+  {% else %}
+    <div class="card-body text-success"><i class="bi bi-check-circle"></i> Всички МПС са обслужени навреме. Няма предстоящи дейности.</div>
+  {% endif %}
+</div>
+<p class="small text-body-secondary mt-2">Срокът е по дата или по пробег – което настъпи първо. „≈ дата“ е прогноза според средния дневен пробег за последните 90 дни. МПС със статус „Спряно от движение“ не се проверяват.</p>
+{% endblock %}

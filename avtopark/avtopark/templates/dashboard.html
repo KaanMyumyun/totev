@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% from "_macros.html" import level_badge, remaining, reminder_subject, reminder_action with context %}
+{% block title %}Табло{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="h3 mb-0">Табло</h1>
+    <div class="text-body-secondary">Състояние на автопарка към {{ today|date_bg }}</div>
+  </div>
+  <a class="btn btn-primary btn-lg" href="{{ url_for('main.check') }}"><i class="bi bi-clipboard-check"></i> Провери обслужване</a>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">
+    <a class="card kpi kpi-primary h-100" href="{{ url_for('vehicles.index') }}">
+      <div class="card-body"><div class="kpi-label">Общо МПС</div><div class="kpi-value">{{ total_vehicles }}</div>
+      <i class="bi bi-truck kpi-icon"></i></div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a class="card kpi kpi-success h-100" href="{{ url_for('vehicles.index', status='active') }}">
+      <div class="card-body"><div class="kpi-label">Активни</div><div class="kpi-value">{{ status_counts.get('active', 0) }}</div>
+      <i class="bi bi-check-circle kpi-icon"></i></div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a class="card kpi kpi-warning h-100" href="{{ url_for('vehicles.index', status='in_repair') }}">
+      <div class="card-body"><div class="kpi-label">В ремонт</div><div class="kpi-value">{{ status_counts.get('in_repair', 0) }}</div>
+      <i class="bi bi-tools kpi-icon"></i></div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a class="card kpi kpi-muted h-100" href="{{ url_for('reports.inactive') }}">
+      <div class="card-body"><div class="kpi-label">Спрени от движение</div><div class="kpi-value">{{ status_counts.get('out_of_service', 0) }}</div>
+      <i class="bi bi-slash-circle kpi-icon"></i></div>
+    </a>
+  </div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <a class="card kpi kpi-danger h-100" href="{{ url_for('reports.upcoming', level='overdue') }}">
+      <div class="card-body"><div class="kpi-label">Просрочени дейности</div><div class="kpi-value">{{ level_counts.overdue }}</div>
+      <i class="bi bi-exclamation-octagon kpi-icon"></i></div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a class="card kpi kpi-warning h-100" href="{{ url_for('reports.upcoming', level='due_soon') }}">
+      <div class="card-body"><div class="kpi-label">Предстоящи (30 дни / 1000 км)</div><div class="kpi-value">{{ level_counts.due_soon }}</div>
+      <i class="bi bi-clock-history kpi-icon"></i></div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    <a class="card kpi kpi-info h-100" href="{{ url_for('trips.open_trips') }}">
+      <div class="card-body"><div class="kpi-label">В курс в момента</div><div class="kpi-value">{{ open_trips|length }}</div>
+      <i class="bi bi-signpost-split kpi-icon"></i></div>
+    </a>
+  </div>
+  <div class="col-6 col-lg-3">
+    {% if can('reports.costs') %}
+    <a class="card kpi kpi-primary h-100" href="{{ url_for('reports.costs') }}">
+      <div class="card-body"><div class="kpi-label">Разходи този месец</div><div class="kpi-value kpi-value-sm">{{ month_total|money }}</div>
+      <i class="bi bi-currency-euro kpi-icon"></i></div>
+    </a>
+    {% else %}
+    <a class="card kpi kpi-primary h-100" href="{{ url_for('reports.index') }}">
+      <div class="card-body"><div class="kpi-label">Справки</div><div class="kpi-value kpi-value-sm">Отвори</div>
+      <i class="bi bi-bar-chart kpi-icon"></i></div>
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-7">
+    <div class="card shadow-sm h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-bell"></i> Изисква внимание</span>
+        <a class="small" href="{{ url_for('reports.upcoming') }}">График на всички ({{ reminders_total }}) ›</a>
+      </div>
+      {% if reminders %}
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light"><tr><th>Състояние</th><th>МПС / шофьор</th><th>Дейност</th><th>Срок</th><th></th></tr></thead>
+          <tbody>
+          {% for r in reminders %}
+            <tr>
+              <td>{{ level_badge(r.level) }}</td>
+              <td>{{ reminder_subject(r) }}</td>
+              <td>{{ r.title }}</td>
+              <td class="small">{{ remaining(r) }}</td>
+              <td class="text-end">{{ reminder_action(r) }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-success"><i class="bi bi-check-circle"></i> Няма просрочени или предстоящи дейности.</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-xl-5 d-flex flex-column gap-4">
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold"><i class="bi bi-lightning-charge"></i> Бързи действия</div>
+      <div class="card-body d-grid gap-2 quick-actions">
+        <a class="btn btn-outline-primary text-start" href="{{ url_for('trips.open_trips') }}"><i class="bi bi-box-arrow-in-left"></i> Връщане от курс (нов пробег и гориво)</a>
+        {% if can('maintenance.manage') %}<a class="btn btn-outline-primary text-start" href="{{ url_for('maintenance.create_record') }}"><i class="bi bi-wrench-adjustable"></i> Нов ремонт / обслужване</a>{% endif %}
+        {% if can('fuel.manage') %}<a class="btn btn-outline-primary text-start" href="{{ url_for('fuel.create') }}"><i class="bi bi-fuel-pump"></i> Ново зареждане</a>{% endif %}
+        {% if can('trips.manage') %}<a class="btn btn-outline-primary text-start" href="{{ url_for('trips.start') }}"><i class="bi bi-box-arrow-right"></i> Отпускане на МПС</a>{% endif %}
+      </div>
+    </div>
+    {% if can('reports.costs') %}
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold"><i class="bi bi-bar-chart"></i> Разходи за последните 6 месеца</div>
+      <div class="card-body"><div class="chart-box"><canvas id="costs-chart" aria-label="Разходи по месеци" role="img"></canvas></div></div>
+      <script type="application/json" id="costs-chart-data">{{ chart|tojson }}</script>
+    </div>
+    {% endif %}
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold"><i class="bi bi-signpost-split"></i> МПС в курс</div>
+      <ul class="list-group list-group-flush">
+        {% for trip in open_trips %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <a class="plate-link" href="{{ url_for('vehicles.detail', vehicle_id=trip.vehicle_id) }}">{{ trip.vehicle.reg_number }}</a>
+            <span class="small text-body-secondary">– {{ trip.driver.full_name }}, от {{ trip.started_at|datetime_bg }}</span>
+            <div class="small">{{ trip.purpose }}</div>
+          </div>
+          {% if can('trips.manage') %}<a class="btn btn-sm btn-outline-primary" href="{{ url_for('trips.return_vehicle', trip_id=trip.id) }}">Върни</a>{% endif %}
+        </li>
+        {% else %}
+        <li class="list-group-item text-body-secondary">Няма МПС в курс.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% if can('reports.costs') %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,98 @@
+/* Fleet management – custom styles on top of Bootstrap 5 */
+:root {
+  --app-primary: #1f4e79;
+  --app-primary-dark: #163a5a;
+  --bs-primary: #1f4e79;
+  --bs-primary-rgb: 31, 78, 121;
+  --bs-link-color: #1f5f99;
+  --bs-link-color-rgb: 31, 95, 153;
+  --bs-link-hover-color: #163a5a;
+}
+
+body { background: #f3f5f8; }
+
+.btn-primary {
+  --bs-btn-bg: var(--app-primary);
+  --bs-btn-border-color: var(--app-primary);
+  --bs-btn-hover-bg: var(--app-primary-dark);
+  --bs-btn-hover-border-color: var(--app-primary-dark);
+  --bs-btn-active-bg: var(--app-primary-dark);
+  --bs-btn-active-border-color: var(--app-primary-dark);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--app-primary);
+  --bs-btn-border-color: var(--app-primary);
+  --bs-btn-hover-bg: var(--app-primary);
+  --bs-btn-hover-border-color: var(--app-primary);
+  --bs-btn-active-bg: var(--app-primary-dark);
+}
+.pagination { --bs-pagination-active-bg: var(--app-primary); --bs-pagination-active-border-color: var(--app-primary); }
+
+.app-navbar { background: linear-gradient(90deg, #163a5a, #1f4e79); }
+.app-navbar .nav-link.active { font-weight: 600; }
+
+.card { border-color: #e2e7ee; }
+.card-header { background: #fff; }
+
+/* Registration plate look */
+.plate, .plate-link {
+  font-family: "DejaVu Sans Mono", "Consolas", monospace;
+  font-weight: 700;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.plate {
+  display: inline-block;
+  padding: .05rem .5rem .05rem 1.1rem;
+  border: 2px solid #1d1d1d;
+  border-radius: .35rem;
+  background: linear-gradient(90deg, #1f4fb8 0 .7rem, #fff .7rem);
+  font-size: .9em;
+}
+.plate-link { text-decoration: none; }
+
+/* KPI cards on the dashboard */
+.kpi { text-decoration: none; color: inherit; position: relative; overflow: hidden; border-left: 4px solid var(--kpi-color, var(--app-primary)); transition: transform .1s ease, box-shadow .1s ease; }
+.kpi:hover { transform: translateY(-2px); box-shadow: 0 .4rem 1rem rgba(0, 0, 0, .08); color: inherit; }
+.kpi-label { font-size: .85rem; color: #5b6676; }
+.kpi-value { font-size: 2rem; font-weight: 700; line-height: 1.2; color: var(--kpi-color, var(--app-primary)); }
+.kpi-value-sm { font-size: 1.4rem; padding-top: .35rem; }
+.kpi-icon { position: absolute; right: 1rem; top: 1rem; font-size: 1.8rem; opacity: .18; color: var(--kpi-color, var(--app-primary)); }
+.kpi-primary { --kpi-color: #1f4e79; }
+.kpi-success { --kpi-color: #198754; }
+.kpi-warning { --kpi-color: #c98a00; }
+.kpi-danger { --kpi-color: #c0392b; }
+.kpi-info { --kpi-color: #0b7a96; }
+.kpi-muted { --kpi-color: #6c757d; }
+
+.stat-label { font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; color: #6b7685; }
+.stat-value { font-size: 1.35rem; font-weight: 700; }
+.stat-fuel { border-top: 3px solid #2f7ed8; }
+.stat-maintenance { border-top: 3px solid #e8833a; }
+.stat-insurance { border-top: 3px solid #6f42c1; }
+
+.badge.text-bg-warning { color: #3d2c00 !important; }
+.row-overdue td:first-child { box-shadow: inset 3px 0 0 #c0392b; }
+.row-due_soon td:first-child { box-shadow: inset 3px 0 0 #f0ad00; }
+
+.chart-box { position: relative; height: 240px; }
+.chart-box-lg { height: 320px; }
+
+.history-table { max-height: 420px; overflow-y: auto; }
+.history-table-lg { max-height: 640px; }
+.history-table thead th { position: sticky; top: 0; z-index: 1; }
+
+.report-card { text-decoration: none; color: inherit; transition: transform .1s ease, box-shadow .1s ease; }
+.report-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1.2rem rgba(0, 0, 0, .08); color: inherit; }
+.report-icon { width: 2.6rem; height: 2.6rem; border-radius: .6rem; display: grid; place-items: center; background: #e8eef6; color: var(--app-primary); font-size: 1.3rem; }
+
+.login-logo { width: 4rem; height: 4rem; margin: 0 auto; border-radius: 1rem; display: grid; place-items: center; background: var(--app-primary); color: #fff; font-size: 2rem; }
+
+.quick-actions .btn i { width: 1.4rem; display: inline-block; }
+
+@media print {
+  body { background: #fff; }
+  .card { box-shadow: none !important; }
+  .history-table { max-height: none; overflow: visible; }
+  a { text-decoration: none; color: inherit; }
+}

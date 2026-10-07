@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Видове дейности{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">Видове дейности по поддръжката</h1>
+    <div class="text-body-secondary">Интервалите по подразбиране се копират в плана на всяко МПС и могат да се променят там.</div>
+  </div>
+  {% if can('types.manage') %}
+  <a class="btn btn-primary" href="{{ url_for('maintenance.edit_type') }}"><i class="bi bi-plus-lg"></i> Нов вид дейност</a>
+  {% endif %}
+</div>
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>Наименование</th><th>Описание</th><th class="text-end">На всеки (км)</th><th class="text-end">На всеки (дни)</th><th>Вид</th><th>Автоматично в плана</th><th class="d-print-none"></th></tr></thead>
+      <tbody>
+      {% for t in types %}
+        <tr class="{{ 'text-body-secondary' if not t.active }}">
+          <td>{{ t.name }}{% if not t.active %} <span class="badge text-bg-secondary">неактивен</span>{% endif %}</td>
+          <td class="small">{{ t.description or "" }}</td>
+          <td class="text-end">{{ t.default_interval_km|number if t.default_interval_km else "—" }}</td>
+          <td class="text-end">{{ t.default_interval_days or "—" }}</td>
+          <td>{% if t.is_periodic %}<span class="badge text-bg-primary">периодична</span>{% else %}<span class="badge text-bg-light">непланирана</span>{% endif %}</td>
+          <td>{% if t.auto_assign %}<i class="bi bi-check-lg text-success"></i> да{% else %}—{% endif %}</td>
+          <td class="text-end text-nowrap d-print-none">
+            {% if can('types.manage') %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('maintenance.edit_type', type_id=t.id) }}" title="Редактирай"><i class="bi bi-pencil"></i></a>
+            <a class="btn btn-sm btn-outline-danger" href="{{ url_for('maintenance.delete_type', type_id=t.id) }}" title="Изтрий"><i class="bi bi-trash"></i></a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

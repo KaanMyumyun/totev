@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_macros.html" import vehicle_select, expiry_badge with context %}
+{% block title %}Застраховки{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">Застраховки</h1>
+    <div class="text-body-secondary">Полици „Гражданска отговорност“ и „Каско“</div>
+  </div>
+  {% if can('insurance.manage') %}
+  <a class="btn btn-primary" href="{{ url_for('insurance.edit') }}"><i class="bi bi-plus-lg"></i> Нова полица</a>
+  {% endif %}
+</div>
+
+<form class="card card-body shadow-sm mb-3 py-2 d-print-none" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4">{{ vehicle_select(vehicles, filters.vehicle_id) }}</div>
+    <div class="col-md-3">
+      <label class="form-label small" for="type">Вид</label>
+      <select class="form-select form-select-sm" id="type" name="type">
+        <option value="">Всички</option>
+        {% for key, label in POLICY_TYPE_LABELS.items() %}<option value="{{ key }}" {{ 'selected' if filters.type == key }}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small" for="show">Показване</label>
+      <select class="form-select form-select-sm" id="show" name="show">
+        <option value="valid" {{ 'selected' if filters.show == 'valid' }}>Само валидни</option>
+        <option value="all" {{ 'selected' if filters.show == 'all' }}>Всички (и изтекли)</option>
+      </select>
+    </div>
+    <div class="col-md-auto d-flex gap-2">
+      <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel"></i> Филтрирай</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('insurance.index') }}">Изчисти</a>
+    </div>
+  </div>
+</form>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>МПС</th><th>Вид</th><th>Застраховател</th><th>№ на полица</th><th>Валидна от</th><th>Валидна до</th><th class="text-end">Премия</th><th class="d-print-none"></th></tr></thead>
+      <tbody>
+      {% for p in policies %}
+        <tr>
+          <td><a class="plate-link" href="{{ url_for('vehicles.detail', vehicle_id=p.vehicle_id) }}">{{ p.vehicle.reg_number }}</a></td>
+          <td>{{ p.type_label }}</td>
+          <td>{{ p.insurer }}</td>
+          <td class="font-monospace small">{{ p.policy_number }}</td>
+          <td class="text-nowrap">{{ p.start_date|date_bg }}</td>
+          <td class="text-nowrap">{{ p.end_date|date_bg }} {{ expiry_badge(p.days_left(today)) }}</td>
+          <td class="text-end text-nowrap">{{ p.premium|money }}</td>
+          <td class="text-end text-nowrap d-print-none">
+            {% if can('insurance.manage') %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('insurance.edit', policy_id=p.id) }}" title="Редактирай"><i class="bi bi-pencil"></i></a>{% endif %}
+            {% if can('records.delete') %}<a class="btn btn-sm btn-outline-danger" href="{{ url_for('insurance.delete', policy_id=p.id) }}" title="Изтрий"><i class="bi bi-trash"></i></a>{% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="text-center text-body-secondary py-4">Няма полици.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

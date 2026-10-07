@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, level_badge with context %}
+{% block title %}МПС{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">Регистър на превозните средства</h1>
+    <div class="text-body-secondary">{{ vehicles|length }} МПС</div>
+  </div>
+  {% if can('vehicles.manage') %}
+  <a class="btn btn-primary" href="{{ url_for('vehicles.create') }}"><i class="bi bi-plus-lg"></i> Ново МПС</a>
+  {% endif %}
+</div>
+
+<form class="card card-body shadow-sm mb-3 py-2 d-print-none" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label small" for="q">Търсене</label>
+      <input class="form-control form-control-sm" id="q" name="q" value="{{ q }}" placeholder="Рег. номер, марка, модел или VIN">
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label small" for="status">Статус</label>
+      <select class="form-select form-select-sm" id="status" name="status">
+        <option value="">Всички</option>
+        {% for key, label in VEHICLE_STATUS_LABELS.items() %}<option value="{{ key }}" {{ 'selected' if status == key }}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label small" for="type">Тип</label>
+      <select class="form-select form-select-sm" id="type" name="type">
+        <option value="">Всички</option>
+        {% for key, label in VEHICLE_TYPE_LABELS.items() %}<option value="{{ key }}" {{ 'selected' if vehicle_type == key }}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+      <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-search"></i> Търси</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('vehicles.index') }}">Изчисти</a>
+    </div>
+  </div>
+</form>
+
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>Рег. номер</th><th>Марка и модел</th><th>Тип</th><th class="text-end">Година</th><th class="text-end">Пробег</th><th>Статус</th><th>Обслужване</th><th>Отговорен шофьор</th></tr>
+      </thead>
+      <tbody>
+      {% for v in vehicles %}
+        <tr>
+          <td><a class="plate-link" href="{{ url_for('vehicles.detail', vehicle_id=v.id) }}">{{ v.reg_number }}</a></td>
+          <td>{{ v.make }} {{ v.model }}<div class="small text-body-secondary">{{ v.fuel_label }}</div></td>
+          <td>{{ v.type_label }}</td>
+          <td class="text-end">{{ v.year }}</td>
+          <td class="text-end text-nowrap">{{ v.current_mileage|km }}</td>
+          <td>{{ status_badge(v.status) }}</td>
+          <td>{% if v.id in worst %}{{ level_badge(worst[v.id]) }}{% else %}<span class="text-body-secondary small">—</span>{% endif %}</td>
+          <td>{{ v.responsible_driver.full_name if v.responsible_driver else "—" }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="text-center text-body-secondary py-4">Няма МПС, които отговарят на търсенето.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

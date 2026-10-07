@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card border-danger shadow-sm">
+      <div class="card-header text-bg-danger"><i class="bi bi-exclamation-triangle-fill"></i> {{ title }}</div>
+      <div class="card-body">
+        <p class="fs-5">{{ message }}</p>
+        {% if details %}
+        <ul class="text-body-secondary">{% for line in details %}<li>{{ line }}</li>{% endfor %}</ul>
+        {% endif %}
+        <form method="post" class="d-flex gap-2 justify-content-end">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <a class="btn btn-outline-secondary" href="{{ cancel_url }}">Отказ</a>
+          <button class="btn btn-danger" type="submit"><i class="bi bi-trash"></i> Да, изтрий</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

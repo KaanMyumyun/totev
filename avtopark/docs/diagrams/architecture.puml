@@ -1,0 +1,38 @@
+@startuml architecture
+!include _style.iuml
+title Архитектура на системата
+
+actor "Потребител\n(браузър)" as Browser
+
+node "Docker контейнер «web»" {
+  component "gunicorn\n(3 процеса)" as Gunicorn
+  package "Flask приложение (avtopark)" {
+    component "Сигурност\nвход, роли, CSRF, CSP" as Security
+    component "Уеб слой (Blueprints)\nМПС, поддръжка, гориво,\nкурсове, шофьори,\nзастраховки, справки" as Views
+    component "Формуляри\n(Flask-WTF)\nвалидация на входа" as Forms
+    component "Шаблони\nJinja2 + Bootstrap 5\n+ Chart.js" as Templates
+    component "Бизнес логика (services)\nнапомняния, километраж,\nразходи, гориво, курсове,\nекспорт CSV/ICS, архив" as Services
+    component "ORM модели\n(SQLAlchemy 2)" as Models
+  }
+}
+
+node "Docker контейнер «backup»" {
+  component "ежедневно\nрезервно копие" as Backup
+}
+
+database "SQLite\navtopark.db\n(WAL режим)" as DB
+folder "backups/\n(последни 14 копия)" as Backups
+component "Календар\n(Google, Outlook)" as Calendar
+
+Browser --> Gunicorn : HTTP(S)
+Gunicorn --> Security
+Security --> Views
+Views --> Forms
+Views --> Services
+Views --> Templates
+Services --> Models
+Models --> DB : SQL с параметри
+Backup --> DB : SQLite online backup
+Backup --> Backups
+Views ..> Calendar : .ics файл
+@enduml

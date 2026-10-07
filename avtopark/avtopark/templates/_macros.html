@@ -1,0 +1,150 @@
+{# Reusable template pieces. Import with: {% from "_macros.html" import x with context %} #}
+
+{% macro render_field(field, col="col-md-6") -%}
+<div class="{{ col }}">
+  {%- if field.type == "BooleanField" %}
+  <div class="form-check mt-1">
+    {{ field(class_="form-check-input" ~ (" is-invalid" if field.errors else "")) }}
+    {{ field.label(class_="form-check-label") }}
+    {% if field.description %}<div class="form-text">{{ field.description }}</div>{% endif %}
+    {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+  </div>
+  {%- else %}
+  <label class="form-label" for="{{ field.id }}">{{ field.label.text }}{% if field.flags.required %} <span class="text-danger" title="Задължително поле">*</span>{% endif %}</label>
+  {% set css = "form-select" if field.type == "SelectField" else "form-control" %}
+  {{ field(class_=css ~ (" is-invalid" if field.errors else "")) }}
+  {% if field.description %}<div class="form-text">{{ field.description }}</div>{% endif %}
+  {% for error in field.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+  {%- endif %}
+</div>
+{%- endmacro %}
+
+{% macro status_badge(status) -%}
+{%- set css = {"active": "text-bg-success", "in_repair": "text-bg-warning", "out_of_service": "text-bg-secondary"} -%}
+{%- set icon = {"active": "check-circle", "in_repair": "tools", "out_of_service": "slash-circle"} -%}
+<span class="badge {{ css[status] }}"><i class="bi bi-{{ icon[status] }}"></i> {{ VEHICLE_STATUS_LABELS[status] }}</span>
+{%- endmacro %}
+
+{% macro level_badge(level) -%}
+{%- set css = {"overdue": "text-bg-danger", "due_soon": "text-bg-warning", "ok": "text-bg-success"} -%}
+{%- set icon = {"overdue": "exclamation-octagon", "due_soon": "clock-history", "ok": "check-circle"} -%}
+<span class="badge {{ css[level] }}"><i class="bi bi-{{ icon[level] }}"></i> {{ LEVEL_LABELS[level] }}</span>
+{%- endmacro %}
+
+{% macro expiry_badge(days_left) -%}
+{%- if days_left < 0 -%}<span class="badge text-bg-danger">изтекла</span>
+{%- elif days_left <= 30 -%}<span class="badge text-bg-warning">{{ days_left|days_left }}</span>
+{%- else -%}<span class="badge text-bg-success">валидна</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro remaining(r) -%}
+{#- The limit that triggers first is shown first and highlighted. -#}
+{%- set km_first = r.status.km_left is not none and (r.status.days_left is none or r.status.km_left < 0 or (r.estimated_date and r.status.due_date and r.estimated_date < r.status.due_date)) -%}
+{%- set date_line -%}
+{%- if r.status.days_left is not none %}<div class="text-nowrap {{ 'text-danger fw-semibold' if r.status.days_left < 0 }}">{{ r.status.due_date|date_bg }} <span class="{{ '' if r.status.days_left < 0 else 'text-body-secondary' }}">({{ r.status.days_left|days_left }})</span></div>{% endif %}
+{%- endset -%}
+{%- set km_line -%}
+{%- if r.status.km_left is not none %}<div class="text-nowrap {{ 'text-danger fw-semibold' if r.status.km_left < 0 }}">{{ r.status.due_km|km }} <span class="{{ '' if r.status.km_left < 0 else 'text-body-secondary' }}">({{ r.status.km_left|km_left }})</span></div>
+{%- if r.estimated_date and r.status.km_left > 0 %}<div class="small text-body-secondary text-nowrap">≈ {{ r.estimated_date|date_bg }} по среден пробег</div>{% endif %}{% endif %}
+{%- endset -%}
+{%- if km_first %}{{ km_line }}{{ date_line }}{% else %}{{ date_line }}{{ km_line }}{% endif %}
+{%- if r.status.days_left is none and r.status.km_left is none %}<span class="text-danger fw-semibold">{{ r.last_done }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro reminder_subject(r) -%}
+{%- if r.vehicle %}<a href="{{ url_for('vehicles.detail', vehicle_id=r.vehicle.id) }}" class="plate-link">{{ r.vehicle.reg_number }}</a>
+<div class="small text-body-secondary">{{ r.vehicle.make }} {{ r.vehicle.model }}</div>
+{%- elif r.driver %}<a href="{{ url_for('drivers.detail', driver_id=r.driver.id) }}">{{ r.driver.full_name }}</a>{% endif %}
+{%- endmacro %}
+
+{% macro reminder_action(r, compact=False) -%}
+{%- if r.kind == "maintenance" and r.vehicle and can('maintenance.manage') -%}
+<a class="btn btn-sm btn-outline-primary text-nowrap" title="Въведи извършено обслужване" href="{{ url_for('maintenance.create_record', vehicle_id=r.vehicle.id, type_id=r.plan.maintenance_type_id) }}"><i class="bi bi-plus-lg"></i>{% if not compact %} Въведи{% endif %}</a>
+{%- elif r.kind == "insurance" and r.vehicle and can('insurance.manage') -%}
+<a class="btn btn-sm btn-outline-primary text-nowrap" title="Поднови полицата" href="{{ url_for('insurance.edit', vehicle_id=r.vehicle.id, type=r.policy.policy_type if r.policy else 'civil_liability') }}"><i class="bi bi-arrow-repeat"></i>{% if not compact %} Поднови{% endif %}</a>
+{%- elif r.kind == "license" and r.driver and can('drivers.manage') -%}
+<a class="btn btn-sm btn-outline-primary text-nowrap" title="Обнови данните за книжката" href="{{ url_for('drivers.edit', driver_id=r.driver.id) }}"><i class="bi bi-pencil"></i>{% if not compact %} Обнови{% endif %}</a>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro reminders_table(reminders, show_last=True) -%}
+<div class="table-responsive">
+<table class="table table-hover align-middle mb-0">
+  <thead class="table-light">
+    <tr><th>Състояние</th><th>МПС / шофьор</th><th>Дейност</th>{% if show_last %}<th>Последно</th>{% endif %}<th>Срок</th><th class="d-print-none"></th></tr>
+  </thead>
+  <tbody>
+  {% for r in reminders %}
+    <tr class="row-{{ r.level }}">
+      <td>{{ level_badge(r.level) }}</td>
+      <td>{{ reminder_subject(r) }}</td>
+      <td>{{ r.title }}{% if r.kind_label != r.title %}<div class="small text-body-secondary">{{ r.kind_label }}</div>{% endif %}</td>
+      {% if show_last %}<td class="small">{{ r.last_done }}</td>{% endif %}
+      <td class="small">{{ remaining(r) }}</td>
+      <td class="text-end d-print-none">{{ reminder_action(r) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{%- endmacro %}
+
+{% macro pagination(page, endpoint) -%}
+{% if page.pages > 1 %}
+{% set args = request.args.to_dict() %}
+<nav aria-label="Страници" class="d-print-none">
+  <ul class="pagination pagination-sm justify-content-center mt-3">
+    <li class="page-item {{ 'disabled' if not page.has_prev }}">
+      <a class="page-link" href="{{ url_for(endpoint, **dict(args, page=page.prev_num or 1)) }}">‹ Предишна</a>
+    </li>
+    {% for number in page.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if number %}
+      <li class="page-item {{ 'active' if number == page.page }}"><a class="page-link" href="{{ url_for(endpoint, **dict(args, page=number)) }}">{{ number }}</a></li>
+      {% else %}
+      <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% endif %}
+    {% endfor %}
+    <li class="page-item {{ 'disabled' if not page.has_next }}">
+      <a class="page-link" href="{{ url_for(endpoint, **dict(args, page=page.next_num or page.pages)) }}">Следваща ›</a>
+    </li>
+  </ul>
+  <p class="text-center small text-body-secondary">Общо {{ page.total }} записа</p>
+</nav>
+{% endif %}
+{%- endmacro %}
+
+{% macro vehicle_select(vehicles, selected, name="vehicle_id", label="МПС") -%}
+<label class="form-label small" for="{{ name }}">{{ label }}</label>
+<select class="form-select form-select-sm" id="{{ name }}" name="{{ name }}">
+  <option value="">Всички</option>
+  {% for v in vehicles %}<option value="{{ v.id }}" {{ 'selected' if selected == v.id }}>{{ v.reg_number }} – {{ v.make }} {{ v.model }}</option>{% endfor %}
+</select>
+{%- endmacro %}
+
+{% macro period_inputs(filters) -%}
+<div class="col-6 col-md-2">
+  <label class="form-label small" for="from">От дата</label>
+  <input class="form-control form-control-sm" type="date" id="from" name="from" value="{{ filters['from'].isoformat() if filters['from'] else '' }}">
+</div>
+<div class="col-6 col-md-2">
+  <label class="form-label small" for="to">До дата</label>
+  <input class="form-control form-control-sm" type="date" id="to" name="to" value="{{ filters['to'].isoformat() if filters['to'] else '' }}">
+</div>
+{%- endmacro %}
+
+{% macro filter_buttons(reset_url) -%}
+<div class="col-12 col-md-auto d-flex gap-2">
+  <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel"></i> Филтрирай</button>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ reset_url }}">Изчисти</a>
+</div>
+{%- endmacro %}
+
+{% macro page_header(title, subtitle=None) -%}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">{{ title }}</h1>
+    {% if subtitle %}<div class="text-body-secondary">{{ subtitle }}</div>{% endif %}
+  </div>
+  <div class="d-flex flex-wrap gap-2 d-print-none">{{ caller() if caller else "" }}</div>
+</div>
+{%- endmacro %}

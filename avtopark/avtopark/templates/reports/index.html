@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Справки{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Справки</h1>
+<p class="text-body-secondary">Всички справки могат да се филтрират, отпечатват (Ctrl+P) и повечето – да се изтеглят като CSV за Excel.</p>
+<div class="row g-3">
+  {% set reports = [
+    ("reports.upcoming", "calendar-week", "График на предстоящите обслужвания", "Кои МПС имат технически преглед, смяна на масло, застраховка или изтичаща книжка скоро – с прогнозна дата по пробег. Експорт в календар (.ics).", None),
+    ("reports.costs", "cash-coin", "Разходи по МПС за период", "Гориво, обслужване и застраховки за всяко МПС, разходи на километър, графика по месеци и разходи по вид дейност.", "reports.costs"),
+    ("reports.inactive", "slash-circle", "Неактивни МПС", "МПС в ремонт или спрени от движение (напр. поради повреда) и активни МПС без движение през последните дни.", None),
+    ("reports.consumption", "fuel-pump", "Разход на гориво", "Среден разход л/100 км по метода „пълен резервоар“, количества и средна цена по МПС.", None),
+    ("reports.usage", "people", "Ползване на МПС по шофьори", "Кой шофьор кое МПС е ползвал, кога и колко километра – за избран период.", None),
+  ] %}
+  {% for endpoint, icon, title, text, permission in reports %}
+    {% if not permission or can(permission) %}
+    <div class="col-md-6 col-xl-4">
+      <a class="card report-card h-100 shadow-sm" href="{{ url_for(endpoint) }}">
+        <div class="card-body">
+          <div class="report-icon"><i class="bi bi-{{ icon }}"></i></div>
+          <h2 class="h5 mt-2">{{ title }}</h2>
+          <p class="text-body-secondary mb-0">{{ text }}</p>
+        </div>
+      </a>
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

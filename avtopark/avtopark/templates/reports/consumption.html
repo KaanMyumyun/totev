@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import period_inputs with context %}
+{% block title %}Разход на гориво{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Разход на гориво</h1>
+<p class="text-body-secondary">Период {{ filters['from']|date_bg }} – {{ filters['to']|date_bg }}. Средният разход се изчислява между зарежданията до пълен резервоар.</p>
+<form class="card card-body shadow-sm mb-3 py-2 d-print-none" method="get">
+  <div class="row g-2 align-items-end">
+    {{ period_inputs(filters) }}
+    <div class="col-md-auto"><button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel"></i> Покажи</button></div>
+  </div>
+</form>
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>МПС</th><th>Гориво</th><th class="text-end">Зареждания</th><th class="text-end">Количество</th><th class="text-end">Сума</th><th class="text-end">Средна цена</th><th class="text-end">Среден разход /100 км</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td><a class="plate-link" href="{{ url_for('vehicles.detail', vehicle_id=row.vehicle.id) }}">{{ row.vehicle.reg_number }}</a> <span class="small text-body-secondary">{{ row.vehicle.make }} {{ row.vehicle.model }}</span></td>
+          <td>{{ row.vehicle.fuel_label }}</td>
+          <td class="text-end">{{ row.fills }}</td>
+          <td class="text-end text-nowrap">{{ row.quantity|number(2) }} {{ row.vehicle.fuel_unit }}</td>
+          <td class="text-end text-nowrap">{{ row.cost|money }}</td>
+          <td class="text-end text-nowrap">{{ row.average_price|number(3) }} €</td>
+          <td class="text-end text-nowrap fw-semibold">{{ row.consumption|number(2) }} {{ row.vehicle.fuel_unit }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="text-center text-body-secondary py-4">Няма зареждания в периода.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "_macros.html" import vehicle_select, period_inputs with context %}
+{% block title %}Разходи по МПС{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">Отчет на разходите</h1>
+    <div class="text-body-secondary">Период {{ filters['from']|date_bg }} – {{ filters['to']|date_bg }}</div>
+  </div>
+  <a class="btn btn-outline-secondary d-print-none" href="{{ url_for('reports.costs', export='csv', **request.args.to_dict()) }}"><i class="bi bi-filetype-csv"></i> Изтегли CSV</a>
+</div>
+
+<form class="card card-body shadow-sm mb-3 py-2 d-print-none" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-4">{{ vehicle_select(vehicles, filters.vehicle_id) }}</div>
+    {{ period_inputs(filters) }}
+    <div class="col-md-auto d-flex gap-2">
+      <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel"></i> Покажи</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('reports.costs') }}">Изчисти</a>
+    </div>
+  </div>
+</form>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3"><div class="card stat h-100"><div class="card-body"><div class="stat-label">Общо</div><div class="stat-value">{{ summary.total|money }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat stat-fuel h-100"><div class="card-body"><div class="stat-label">Гориво</div><div class="stat-value">{{ summary.fuel|money }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat stat-maintenance h-100"><div class="card-body"><div class="stat-label">Обслужване и ремонти</div><div class="stat-value">{{ summary.maintenance|money }}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat stat-insurance h-100"><div class="card-body"><div class="stat-label">Застраховки</div><div class="stat-value">{{ summary.insurance|money }}</div></div></div></div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-xl-8">
+    <div class="card shadow-sm h-100">
+      <div class="card-header fw-semibold"><i class="bi bi-bar-chart"></i> Разходи по месеци</div>
+      <div class="card-body"><div class="chart-box chart-box-lg"><canvas id="costs-chart" role="img" aria-label="Разходи по месеци"></canvas></div></div>
+      <script type="application/json" id="costs-chart-data">{{ chart|tojson }}</script>
+    </div>
+  </div>
+  <div class="col-xl-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header fw-semibold"><i class="bi bi-wrench"></i> Обслужване по вид дейност</div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light"><tr><th>Дейност</th><th class="text-end">Бр.</th><th class="text-end">Сума</th></tr></thead>
+          <tbody>
+          {% for name, count, amount in by_type %}
+            <tr><td>{{ name }}</td><td class="text-end">{{ count }}</td><td class="text-end text-nowrap">{{ amount|money }}</td></tr>
+          {% else %}
+            <tr><td colspan="3" class="text-body-secondary">Няма записи.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header fw-semibold"><i class="bi bi-table"></i> Разходи по МПС</div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>МПС</th><th class="text-end">Гориво</th><th class="text-end">Обслужване и ремонти</th><th class="text-end">Застраховки</th><th class="text-end">Общо</th><th class="text-end">Изминати км</th><th class="text-end">€ / км</th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td><a class="plate-link" href="{{ url_for('vehicles.detail', vehicle_id=row.vehicle.id) }}">{{ row.vehicle.reg_number }}</a> <span class="small text-body-secondary">{{ row.vehicle.make }} {{ row.vehicle.model }}</span></td>
+          <td class="text-end text-nowrap">{{ row.fuel|money }}</td>
+          <td class="text-end text-nowrap">{{ row.maintenance|money }}</td>
+          <td class="text-end text-nowrap">{{ row.insurance|money }}</td>
+          <td class="text-end text-nowrap fw-semibold">{{ row.total|money }}</td>
+          <td class="text-end text-nowrap">{{ row.distance|km }}</td>
+          <td class="text-end">{{ row.cost_per_km|number(3) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-semibold">
+        <tr><td>Общо</td><td class="text-end text-nowrap">{{ summary.fuel|money }}</td><td class="text-end text-nowrap">{{ summary.maintenance|money }}</td><td class="text-end text-nowrap">{{ summary.insurance|money }}</td><td class="text-end text-nowrap">{{ summary.total|money }}</td><td></td><td></td></tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

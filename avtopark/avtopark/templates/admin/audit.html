@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pagination with context %}
+{% block title %}Журнал на действията{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">Журнал на действията</h1>
+    <div class="text-body-secondary">Кой какво е създал, променил или изтрил и кога.</div>
+  </div>
+  <form method="get" class="d-flex gap-2 d-print-none">
+    <select class="form-select form-select-sm" name="action" aria-label="Действие">
+      <option value="">Всички действия</option>
+      {% for key, label in action_labels.items() %}<option value="{{ key }}" {{ 'selected' if action == key }}>{{ label }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-sm btn-primary" type="submit">Филтрирай</button>
+  </form>
+</div>
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>Време</th><th>Потребител</th><th>Действие</th><th>Обект</th><th>Подробности</th></tr></thead>
+      <tbody>
+      {% for entry in page.items %}
+        <tr>
+          <td class="text-nowrap small">{{ entry.created_at|datetime_bg }}</td>
+          <td class="font-monospace small">{{ entry.username or "система" }}</td>
+          <td>{{ action_labels.get(entry.action, entry.action) }}</td>
+          <td class="small">{{ entry.entity }}{% if entry.entity_id %} #{{ entry.entity_id }}{% endif %}</td>
+          <td class="small">{{ entry.details }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="text-center text-body-secondary py-4">Няма записи.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{ pagination(page, 'admin.audit') }}
+{% endblock %}

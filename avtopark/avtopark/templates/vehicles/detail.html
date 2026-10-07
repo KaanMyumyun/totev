@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, level_badge, remaining, reminder_action, render_field with context %}
+{% block title %}{{ vehicle.reg_number }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb" class="d-print-none">
+  <ol class="breadcrumb small mb-2">
+    <li class="breadcrumb-item"><a href="{{ url_for('vehicles.index') }}">МПС</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ vehicle.reg_number }}</li>
+  </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div>
+    <h1 class="h3 mb-1"><span class="plate">{{ vehicle.reg_number }}</span> {{ vehicle.make }} {{ vehicle.model }}</h1>
+    <div>{{ status_badge(vehicle.status) }} <span class="text-body-secondary ms-1">{{ vehicle.type_label }} · {{ vehicle.year }} г. · {{ vehicle.fuel_label }}</span></div>
+    {% if vehicle.status_note %}
+    <div class="small text-body-secondary mt-1"><i class="bi bi-info-circle"></i> {{ vehicle.status_note }} (от {{ vehicle.status_changed_at|date_bg }})</div>
+    {% endif %}
+  </div>
+  <div class="d-flex flex-wrap gap-2 d-print-none">
+    {% if can('maintenance.manage') %}
+    <a class="btn btn-primary" href="{{ url_for('maintenance.create_record', vehicle_id=vehicle.id) }}"><i class="bi bi-wrench-adjustable"></i> Обслужване / ремонт</a>
+    {% endif %}
+    {% if can('fuel.manage') %}
+    <a class="btn btn-outline-primary" href="{{ url_for('fuel.create', vehicle_id=vehicle.id) }}"><i class="bi bi-fuel-pump"></i> Зареждане</a>
+    {% endif %}
+    {% if can('trips.manage') %}
+      {% if open_trip %}
+      <a class="btn btn-outline-primary" href="{{ url_for('trips.return_vehicle', trip_id=open_trip.id) }}"><i class="bi bi-box-arrow-in-left"></i> Връщане от курс</a>
+      {% elif vehicle.status == 'active' %}
+      <a class="btn btn-outline-primary" href="{{ url_for('trips.start', vehicle_id=vehicle.id) }}"><i class="bi bi-box-arrow-right"></i> Отпусни</a>
+      {% endif %}
+    {% endif %}
+    {% if can('vehicles.manage') %}
+    <a class="btn btn-outline-secondary" href="{{ url_for('vehicles.edit', vehicle_id=vehicle.id) }}"><i class="bi bi-pencil"></i> Редактирай</a>
+    {% endif %}
+    {% if can('records.delete') %}
+    <a class="btn btn-outline-danger" href="{{ url_for('vehicles.delete', vehicle_id=vehicle.id) }}" title="Изтрий МПС"><i class="bi bi-trash"></i></a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3"><div class="card stat h-100"><div class="card-body">
+    <div class="stat-label">Текущ пробег</div><div class="stat-value">{{ vehicle.current_mileage|km }}</div>
+    <div class="small text-body-secondary">последен отчет {{ vehicle.mileage_updated_on|date_bg }}</div>
+  </div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat h-100"><div class="card-body">
+    <div class="stat-label">Среден дневен пробег</div><div class="stat-value">{{ daily_km|number }} км</div>
+    <div class="small text-body-secondary">за последните 90 дни</div>
+  </div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat h-100"><div class="card-body">
+    <div class="stat-label">Среден разход</div><div class="stat-value">{{ consumption|number(2) }} {{ vehicle.fuel_unit }}/100 км</div>
+    <div class="small text-body-secondary">метод „пълен резервоар“</div>
+  </div></div></div>
+  <div class="col-6 col-lg-3"><div class="card stat h-100"><div class="card-body">
+    {% if can('reports.costs') %}
+    <div class="stat-label">Разходи за 12 месеца</div><div class="stat-value">{{ year_costs.total|money }}</div>
+    <div class="small text-body-secondary">{% if year_costs.cost_per_km %}{{ year_costs.cost_per_km|number(3) }} €/км{% else %}&nbsp;{% endif %}</div>
+    {% else %}
+    <div class="stat-label">В автопарка от</div><div class="stat-value">{{ vehicle.in_service_since|date_bg }}</div>
+    {% endif %}
+  </div></div></div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-8 d-flex flex-column gap-4">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-calendar-check"></i> План за поддръжка</span>
+        {% if can('plans.manage') %}<a class="btn btn-sm btn-outline-primary d-print-none" href="{{ url_for('maintenance.edit_plan', vehicle_id=vehicle.id) }}"><i class="bi bi-plus-lg"></i> Добави дейност</a>{% endif %}
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light"><tr><th>Дейност</th><th>Интервал</th><th>Последно</th><th>Следващо</th><th>Състояние</th><th class="d-print-none"></th></tr></thead>
+          <tbody>
+          {% for r in plan_rows %}
+            <tr class="{{ 'text-body-secondary' if not r.plan.active }}">
+              <td>{{ r.title }}</td>
+              <td class="small text-nowrap">
+                {% if r.plan.interval_km %}{{ r.plan.interval_km|km }}{% endif %}{% if r.plan.interval_km and r.plan.interval_days %} / {% endif %}{% if r.plan.interval_days %}{{ r.plan.interval_days }} дни{% endif %}
+              </td>
+              <td class="small">{{ r.last_done }}</td>
+              <td class="small">{{ remaining(r) }}</td>
+              <td>{{ level_badge(r.level) }}</td>
+              <td class="text-end text-nowrap d-print-none">
+                {{ reminder_action(r, compact=True) }}
+                {% if can('plans.manage') %}
+                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('maintenance.edit_plan', plan_id=r.plan.id) }}" title="Редактирай"><i class="bi bi-pencil"></i></a>
+                <a class="btn btn-sm btn-outline-danger" href="{{ url_for('maintenance.delete_plan', plan_id=r.plan.id) }}" title="Премахни"><i class="bi bi-x-lg"></i></a>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="text-body-secondary">Няма планирани дейности за това МПС.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-shield-check"></i> Застраховки</span>
+        {% if can('insurance.manage') %}<a class="btn btn-sm btn-outline-primary d-print-none" href="{{ url_for('insurance.edit', vehicle_id=vehicle.id) }}"><i class="bi bi-plus-lg"></i> Нова полица</a>{% endif %}
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light"><tr><th>Вид</th><th>Полица</th><th>Валидна до</th><th>Състояние</th><th class="d-print-none"></th></tr></thead>
+          <tbody>
+          {% for r in insurance_rows %}
+            <tr>
+              <td>{{ r.title }}</td>
+              <td class="small">{{ r.last_done }}</td>
+              <td class="small">{{ remaining(r) }}</td>
+              <td>{{ level_badge(r.level) }}</td>
+              <td class="text-end d-print-none">{{ reminder_action(r) if r.level != 'ok' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs" role="tablist">
+          <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-maintenance" type="button" role="tab">Обслужвания и ремонти ({{ vehicle.maintenance_records|length }})</button></li>
+          <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-fuel" type="button" role="tab">Зареждания ({{ vehicle.fuel_records|length }})</button></li>
+          <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-trips" type="button" role="tab">Курсове ({{ vehicle.trips|length }})</button></li>
+          <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-readings" type="button" role="tab">Отчети на километража</button></li>
+        </ul>
+      </div>
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-maintenance" role="tabpanel">
+          <div class="table-responsive history-table">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light"><tr><th>Дата</th><th>Дейност</th><th class="text-end">Км</th><th>Описание</th><th class="text-end">Цена</th><th class="d-print-none"></th></tr></thead>
+              <tbody>
+              {% for rec in vehicle.maintenance_records %}
+                <tr>
+                  <td class="text-nowrap">{{ rec.performed_on|date_bg }}</td>
+                  <td>{{ rec.maintenance_type.name }}</td>
+                  <td class="text-end text-nowrap">{{ rec.mileage|number }}</td>
+                  <td class="small">{{ rec.description }}{% if rec.service_provider %}<div class="text-body-secondary">{{ rec.service_provider }}</div>{% endif %}</td>
+                  <td class="text-end text-nowrap">{{ rec.cost|money }}</td>
+                  <td class="text-end text-nowrap d-print-none">
+                    {% if can('maintenance.manage') %}<a class="btn btn-sm btn-link p-0 me-2" href="{{ url_for('maintenance.edit_record', record_id=rec.id) }}" title="Редактирай"><i class="bi bi-pencil"></i></a>{% endif %}
+                    {% if can('records.delete') %}<a class="btn btn-sm btn-link p-0 text-danger" href="{{ url_for('maintenance.delete_record', record_id=rec.id) }}" title="Изтрий"><i class="bi bi-trash"></i></a>{% endif %}
+                  </td>
+                </tr>
+              {% else %}
+                <tr><td colspan="6" class="text-body-secondary">Няма записи.</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="tab-pane fade" id="tab-fuel" role="tabpanel">
+          <div class="table-responsive history-table">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light"><tr><th>Дата</th><th class="text-end">Км</th><th class="text-end">Количество</th><th class="text-end">Ед. цена</th><th class="text-end">Сума</th><th>Шофьор</th><th>Станция</th></tr></thead>
+              <tbody>
+              {% for rec in vehicle.fuel_records[:40] %}
+                <tr>
+                  <td class="text-nowrap">{{ rec.filled_on|date_bg }}</td>
+                  <td class="text-end">{{ rec.mileage|number }}</td>
+                  <td class="text-end text-nowrap">{{ rec.quantity|number(2) }} {{ vehicle.fuel_unit }}{% if not rec.full_tank %} <span class="badge text-bg-light" title="Частично зареждане">част.</span>{% endif %}</td>
+                  <td class="text-end">{{ rec.price_per_unit|number(3) }}</td>
+                  <td class="text-end text-nowrap">{{ rec.total_cost|money }}</td>
+                  <td class="small">{{ rec.driver.full_name if rec.driver else "—" }}</td>
+                  <td class="small">{{ rec.station or "—" }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="7" class="text-body-secondary">Няма зареждания.</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% if vehicle.fuel_records|length > 40 %}<div class="card-body py-2 small"><a href="{{ url_for('fuel.index', vehicle_id=vehicle.id) }}">Всички зареждания ›</a></div>{% endif %}
+        </div>
+        <div class="tab-pane fade" id="tab-trips" role="tabpanel">
+          <div class="table-responsive history-table">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light"><tr><th>Шофьор</th><th>Начало</th><th>Край</th><th class="text-end">Км</th><th>Цел</th></tr></thead>
+              <tbody>
+              {% for trip in vehicle.trips[:40] %}
+                <tr>
+                  <td><a href="{{ url_for('drivers.detail', driver_id=trip.driver_id) }}">{{ trip.driver.full_name }}</a></td>
+                  <td class="text-nowrap small">{{ trip.started_at|datetime_bg }}</td>
+                  <td class="text-nowrap small">{% if trip.is_open %}<span class="badge text-bg-info">в курс</span>{% else %}{{ trip.ended_at|datetime_bg }}{% endif %}</td>
+                  <td class="text-end">{{ trip.distance|number if trip.distance is not none else "—" }}</td>
+                  <td class="small">{{ trip.purpose }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="5" class="text-body-secondary">Няма курсове.</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% if vehicle.trips|length > 40 %}<div class="card-body py-2 small"><a href="{{ url_for('trips.index', vehicle_id=vehicle.id) }}">Всички курсове ›</a></div>{% endif %}
+        </div>
+        <div class="tab-pane fade" id="tab-readings" role="tabpanel">
+          <div class="table-responsive history-table">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light"><tr><th>Дата</th><th class="text-end">Километраж</th><th>Бележка</th><th class="d-print-none"></th></tr></thead>
+              <tbody>
+                <tr><td>{{ vehicle.in_service_since|date_bg }}</td><td class="text-end">{{ vehicle.initial_mileage|number }}</td><td class="small">Начален пробег при въвеждане в системата</td><td></td></tr>
+              {% for reading in vehicle.odometer_readings %}
+                <tr>
+                  <td>{{ reading.read_on|date_bg }}</td>
+                  <td class="text-end">{{ reading.mileage|number }}</td>
+                  <td class="small">{{ reading.note or "" }}</td>
+                  <td class="text-end d-print-none">{% if can('records.delete') %}<a class="btn btn-sm btn-link p-0 text-danger" href="{{ url_for('vehicles.delete_reading', reading_id=reading.id) }}" title="Изтрий"><i class="bi bi-trash"></i></a>{% endif %}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4 d-flex flex-column gap-4">
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold"><i class="bi bi-card-list"></i> Данни</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5">VIN</dt><dd class="col-7 font-monospace">{{ vehicle.vin or "—" }}</dd>
+          <dt class="col-5">В автопарка от</dt><dd class="col-7">{{ vehicle.in_service_since|date_bg }}</dd>
+          <dt class="col-5">Начален пробег</dt><dd class="col-7">{{ vehicle.initial_mileage|km }}</dd>
+          <dt class="col-5">Отговорен шофьор</dt>
+          <dd class="col-7">{% if vehicle.responsible_driver %}<a href="{{ url_for('drivers.detail', driver_id=vehicle.responsible_driver_id) }}">{{ vehicle.responsible_driver.full_name }}</a>{% else %}—{% endif %}</dd>
+          {% if open_trip %}
+          <dt class="col-5">В курс</dt><dd class="col-7">{{ open_trip.driver.full_name }}, от {{ open_trip.started_at|datetime_bg }}</dd>
+          {% endif %}
+          {% if vehicle.notes %}<dt class="col-5">Бележки</dt><dd class="col-7">{{ vehicle.notes }}</dd>{% endif %}
+        </dl>
+      </div>
+    </div>
+
+    {% if can('reports.costs') %}
+    <div class="card shadow-sm">
+      <div class="card-header fw-semibold"><i class="bi bi-cash-stack"></i> Разходи за последните 12 месеца</div>
+      <ul class="list-group list-group-flush small">
+        <li class="list-group-item d-flex justify-content-between"><span>Гориво</span><span>{{ year_costs.fuel|money }}</span></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Обслужване и ремонти</span><span>{{ year_costs.maintenance|money }}</span></li>
+        <li class="list-group-item d-flex justify-content-between"><span>Застраховки</span><span>{{ year_costs.insurance|money }}</span></li>
+        <li class="list-group-item d-flex justify-content-between fw-semibold"><span>Общо</span><span>{{ year_costs.total|money }}</span></li>
+      </ul>
+      <div class="card-body py-2 small"><a href="{{ url_for('reports.costs', vehicle_id=vehicle.id) }}">Подробен отчет ›</a></div>
+    </div>
+    {% endif %}
+
+    {% if can('vehicles.status') %}
+    <div class="card shadow-sm d-print-none">
+      <div class="card-header fw-semibold"><i class="bi bi-toggles"></i> Смяна на статус</div>
+      <form class="card-body" method="post" action="{{ url_for('vehicles.status', vehicle_id=vehicle.id) }}">
+        {{ status_form.hidden_tag() }}
+        <div class="row g-2">
+          {{ render_field(status_form.status, "col-12") }}
+          {{ render_field(status_form.note, "col-12") }}
+        </div>
+        <button class="btn btn-outline-primary btn-sm mt-3" type="submit">Запази статуса</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if can('odometer.add') %}
+    <div class="card shadow-sm d-print-none">
+      <div class="card-header fw-semibold"><i class="bi bi-speedometer2"></i> Отчитане на километраж</div>
+      <form class="card-body" method="post" action="{{ url_for('vehicles.add_reading', vehicle_id=vehicle.id) }}">
+        {{ reading_form.hidden_tag() }}
+        <div class="row g-2">
+          {{ render_field(reading_form.read_on, "col-6") }}
+          {{ render_field(reading_form.mileage, "col-6") }}
+          {{ render_field(reading_form.note, "col-12") }}
+        </div>
+        <button class="btn btn-outline-primary btn-sm mt-3" type="submit">Отчети</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

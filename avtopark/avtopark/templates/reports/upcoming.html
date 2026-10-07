@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_macros.html" import reminders_table with context %}
+{% block title %}График на предстоящите обслужвания{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-0">График на предстоящите обслужвания</h1>
+    <div class="text-body-secondary">Към {{ today|date_bg }} · хоризонт {{ filters.days }} дни / {{ filters.km|number }} км</div>
+  </div>
+  <div class="d-flex gap-2 d-print-none">
+    <a class="btn btn-outline-secondary" href="{{ url_for('reports.upcoming', export='csv', **request.args.to_dict()) }}"><i class="bi bi-filetype-csv"></i> CSV</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('reports.upcoming', export='ics', **request.args.to_dict()) }}"><i class="bi bi-calendar-plus"></i> Календар (.ics)</a>
+  </div>
+</div>
+
+<form class="card card-body shadow-sm mb-3 py-2 d-print-none" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-2">
+      <label class="form-label small" for="days">До (дни напред)</label>
+      <input class="form-control form-control-sm" type="number" min="0" max="730" id="days" name="days" value="{{ filters.days }}">
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small" for="km">До (км напред)</label>
+      <input class="form-control form-control-sm" type="number" min="0" max="100000" step="100" id="km" name="km" value="{{ filters.km }}">
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small" for="kind">Вид</label>
+      <select class="form-select form-select-sm" id="kind" name="kind">
+        <option value="">Всички</option>
+        <option value="maintenance" {{ 'selected' if filters.kind == 'maintenance' }}>Поддръжка</option>
+        <option value="insurance" {{ 'selected' if filters.kind == 'insurance' }}>Застраховки</option>
+        <option value="license" {{ 'selected' if filters.kind == 'license' }}>Шофьорски книжки</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small" for="type_id">Дейност</label>
+      <select class="form-select form-select-sm" id="type_id" name="type_id">
+        <option value="">Всички</option>
+        {% for t in types if t.is_periodic %}<option value="{{ t.id }}" {{ 'selected' if filters.type_id == t.id }}>{{ t.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small" for="level">Състояние</label>
+      <select class="form-select form-select-sm" id="level" name="level">
+        <option value="">Просрочени и предстоящи</option>
+        <option value="overdue" {{ 'selected' if filters.level == 'overdue' }}>Само просрочени</option>
+        <option value="due_soon" {{ 'selected' if filters.level == 'due_soon' }}>Само предстоящи</option>
+      </select>
+    </div>
+    <div class="col-12 col-md-2 d-flex gap-2">
+      <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel"></i> Покажи</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('reports.upcoming') }}">Изчисти</a>
+    </div>
+  </div>
+</form>
+
+<div class="d-flex gap-3 mb-2 small">
+  <span><span class="badge text-bg-danger">{{ counts.overdue }}</span> просрочени</span>
+  <span><span class="badge text-bg-warning">{{ counts.due_soon }}</span> предстоящи</span>
+</div>
+<div class="card shadow-sm">
+  {% if reminders %}{{ reminders_table(reminders) }}{% else %}<div class="card-body text-success"><i class="bi bi-check-circle"></i> Няма дейности в избрания хоризонт.</div>{% endif %}
+</div>
+{% endblock %}
